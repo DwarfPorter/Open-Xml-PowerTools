@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>OpenXmlPowerTools</id>
+    <version>4.5.3.2-custom2</version>
+    <authors>EricWhiteDev ThomasBarnekow BrettBailey twsouthwick lajjne boriskreminskimoldev Zache tarunchopra jawn Duikmeester NavaneethaDev</authors>
+    <owners>comunity</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <licenseUrl>https://github.com/OfficeDev/Open-Xml-PowerTools/blob/vNext/LICENSE.txt</licenseUrl>
+    <projectUrl>https://github.com/OfficeDev/Open-Xml-PowerTools</projectUrl>
+    <iconUrl>http://github.com/contoso/UsefulStuff/nuget_icon.png</iconUrl>
+    <description>The Open XML PowerTools provides guidance and example code for programming with Open XML Documents (DOCX, XLSX, and PPTX). It is based on, and extends the functionality of the Open XML SDK.</description>
+    <releaseNotes>Bug fixes and performance improvements</releaseNotes>
+    <copyright>Microsoft Public License</copyright>
+    <dependencies>
+      <dependency id="DocumentFormat.OpenXml" version="2.8.1" />
+    </dependencies>
+  </metadata>
+</package>

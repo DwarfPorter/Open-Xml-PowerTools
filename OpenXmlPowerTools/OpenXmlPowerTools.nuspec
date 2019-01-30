@@ -16,4 +16,7 @@
       <dependency id="DocumentFormat.OpenXml" version="2.8.1" />
     </dependencies>
   </metadata>
+  <files>
+    <file src="bin\Debug\*.dll" target="lib\" />
+  </files>
 </package>

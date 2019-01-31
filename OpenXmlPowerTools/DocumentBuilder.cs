@@ -174,6 +174,17 @@ namespace OpenXmlPowerTools
         }
     }
 
+    public class HeaderFooter : Source
+    {
+        public HeaderFooter(WmlDocument source, int sectionNo)
+            : base(source)
+        {
+            SectionNo = sectionNo;
+        }
+
+        public int SectionNo { get; private set; }
+    }
+
     public class DocumentBuilderSettings
     {
         public HashSet<string> CustomXmlGuidList = null;
@@ -374,7 +385,7 @@ namespace OpenXmlPowerTools
                 }
 
                 int sourceNum2 = 0;
-                foreach (Source source in sources)
+                foreach (Source source in sources.OrderBy(s => s is HeaderFooter))
                 {
                     if (source.InsertId != null)
                     {
@@ -416,7 +427,14 @@ namespace OpenXmlPowerTools
 
                                         try
                                         {
-                                            AppendDocument(doc, output, contents, source.KeepSections, source.InsertId, images);
+                                            if (source is HeaderFooter)
+                                            {
+                                                AddHeadersAndFooters(output, images, doc, contents, source as HeaderFooter);
+                                            }
+                                            else
+                                            {
+                                                AppendDocument(doc, output, contents, source.KeepSections, source.InsertId, images);
+                                            }
                                         }
                                         catch (DocumentBuilderInternalException dbie)
                                         {
@@ -461,7 +479,14 @@ namespace OpenXmlPowerTools
                                 .ToList();
                             try
                             {
-                                AppendDocument(doc, output, contents, source.KeepSections, null, images);
+                                if (source is HeaderFooter)
+                                {
+                                    AddHeadersAndFooters(output, images, doc, contents, source as HeaderFooter);
+                                }
+                                else
+                                {
+                                    AppendDocument(doc, output, contents, source.KeepSections, null, images);
+                                }
                             }
                             catch (DocumentBuilderInternalException dbie)
                             {
@@ -536,7 +561,7 @@ namespace OpenXmlPowerTools
 
                 // Now can process PtOpenXml:Insert elements in headers / footers
                 int sourceNum = 0;
-                foreach (Source source in sources)
+                foreach (Source source in sources.OrderBy(s => s is HeaderFooter))
                 {
                     if (source.InsertId != null)
                     {
@@ -587,7 +612,14 @@ namespace OpenXmlPowerTools
 
                                         try
                                         {
-                                            AppendDocument(doc, output, part, contents, source.KeepSections, source.InsertId, images);
+                                            if (source is HeaderFooter)
+                                            {
+                                                AddHeadersAndFooters(output, images, doc, contents, source as HeaderFooter);
+                                            }
+                                            else
+                                            { 
+                                                AppendDocument(doc, output, part, contents, source.KeepSections, source.InsertId, images);
+                                            }
                                         }
                                         catch (DocumentBuilderInternalException dbie)
                                         {
@@ -654,6 +686,40 @@ namespace OpenXmlPowerTools
       <w:docPartBody>
         <w:p w:rsidR="00004EEA" w:rsidRDefault="00AD57F5" w:rsidP="00AD57F5">
 #endif
+
+        private static void AddHeadersAndFooters(WordprocessingDocument output, List<ImageData> images, WordprocessingDocument doc, List<XElement> contents, HeaderFooter hf)
+        {
+            var sectPr = contents.DescendantsAndSelf(W.sectPr).FirstOrDefault();
+            var hfs = AddSectionAndDependencies(doc, output, sectPr, images);
+
+            var targetSection = output.MainDocumentPart.GetXDocument().Root
+                .DescendantsAndSelf(W.sectPr)
+                .Skip(hf.SectionNo)
+                .FirstOrDefault();
+
+            if (targetSection == null) return;
+
+            targetSection.Elements(W.headerReference).Remove();
+            targetSection.Elements(W.footerReference).Remove();
+
+            foreach (var item in hfs)
+            {
+                targetSection.Add(item);
+            }
+
+            var oddEvenSetting =
+                doc.MainDocumentPart.DocumentSettingsPart.GetXDocument().Root
+                .Elements(W.evenAndOddHeaders)
+                .Any();
+
+            var titlePageSetting = sectPr.Elements(W.titlePg).Any();
+
+            if (oddEvenSetting)
+                output.MainDocumentPart.DocumentSettingsPart.GetXDocument().Root.Add(new XElement(W.evenAndOddHeaders));
+
+            if (titlePageSetting)
+                targetSection.Add(new XElement(W.titlePg));
+        }
 
         private static void WriteGlossaryDocumentPart(WmlDocument wmlGlossaryDocument, WordprocessingDocument output, List<ImageData> images)
         {
@@ -1149,9 +1215,11 @@ namespace OpenXmlPowerTools
                 s.Remove();
         }
 
-        private static void AddSectionAndDependencies(WordprocessingDocument sourceDocument, WordprocessingDocument newDocument,
+        private static IEnumerable<XElement> AddSectionAndDependencies(WordprocessingDocument sourceDocument, WordprocessingDocument newDocument,
             XElement sectionMarkup, List<ImageData> images)
         {
+            var result = new List<XElement>();
+
             var headerReferences = sectionMarkup.Elements(W.headerReference);
             foreach (var headerReference in headerReferences)
             {
@@ -1175,6 +1243,7 @@ namespace OpenXmlPowerTools
                 newHeaderXDoc.Declaration.Encoding = Utf8;
                 newHeaderXDoc.Add(oldHeaderXDoc.Root);
                 headerReference.Attribute(R.id).Value = newDocument.MainDocumentPart.GetIdOfPart(newHeaderPart);
+                result.Add(headerReference);
                 AddRelationships(oldHeaderPart, newHeaderPart, new[] { newHeaderXDoc.Root });
                 CopyRelatedPartsForContentParts(oldHeaderPart, newHeaderPart, new[] { newHeaderXDoc.Root }, images);
             }
@@ -1196,9 +1265,11 @@ namespace OpenXmlPowerTools
                 newFooterXDoc.Declaration.Encoding = Utf8;
                 newFooterXDoc.Add(oldFooterXDoc.Root);
                 footerReference.Attribute(R.id).Value = newDocument.MainDocumentPart.GetIdOfPart(newFooterPart);
+                result.Add(footerReference);
                 AddRelationships(oldFooterPart, newFooterPart, new[] { newFooterXDoc.Root });
                 CopyRelatedPartsForContentParts(oldFooterPart, newFooterPart, new[] { newFooterXDoc.Root }, images);
             }
+            return result;
         }
 
         private static void MergeStyles(WordprocessingDocument sourceDocument, WordprocessingDocument newDocument, XDocument fromStyles, XDocument toStyles, IEnumerable<XElement> newContent)

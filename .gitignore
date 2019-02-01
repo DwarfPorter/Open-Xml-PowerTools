@@ -26,6 +26,7 @@ Thumbs.db
 [Bb]in/
 [Oo]bj/
 TestResults/
+TestFiles/
 
 # NuGet Packages
 *.nupkg
